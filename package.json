@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:alerts": "tsx scripts/smoke-test-alerts.ts",
+    "smoke:session": "tsx scripts/smoke-test-session.ts",
     "demo:alert-impact": "tsx scripts/demo-alert-impact.ts",
     "inspect": "npx @modelcontextprotocol/inspector tsx src/index.ts",
     "http": "tsx watch src/http.ts",

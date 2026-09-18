@@ -4,10 +4,12 @@ An MCP server that tells you specifically how to prepare for severe weather righ
 over live official alerts and your exact region, not a generic "stay safe" checklist.
 
 Built for the **Alexa+ track**: Alexa+ acts as the MCP client, discovers
-`get_weather_prep_guidance`, and calls it when a customer asks something like "how should I
-prepare right now?" A companion project to
+`get_weather_prep_guidance`, `refine_prep_guidance`, and `remember_preference`, and calls them as
+a customer asks "how should I prepare right now?", reacts to the guidance ("we have no car"), or
+states a standing household detail ("elderly resident") — an agentic workflow that keeps context
+across turns, not a single-shot Q&A. A companion project to
 [forecast-fork](../forecast-fork) — same architecture pattern (MCP server, Bedrock structured
-reasoning, three demo paths), different real-world problem.
+reasoning, session memory, three demo paths), different real-world problem.
 
 ## Why this, not just a rule engine
 
@@ -31,20 +33,40 @@ isn't a nice-to-have here.
 Alexa+ (MCP client)
   │  "how should I prepare right now?"
   ▼
-get_weather_prep_guidance(location, context?)
+get_weather_prep_guidance(location, context?, session_id?)
   │
   ├─▶ geocodeLocation()      Google Geocoding API        → lat/lng, city/region/country
   ├─▶ getCurrentConditions() Open-Meteo (no key)          → temp, wind, gusts, precipitation
   ├─▶ getActiveAlerts()      US National Weather Service  → active official alerts (US-only;
   │                          (no key, needs a User-Agent)   returns "unsupported" coverage elsewhere)
+  ├─▶ [session_id] apply remembered household details, cache location/conditions/alerts/steps
   └─▶ reasonAboutPrep()      Amazon Bedrock (Claude)      → structured guidance (forced tool-use):
                                 { primary_concern, severity, prep_steps[], reasoning }
+
+refine_prep_guidance(session_id, feedback)
+  │  "we have no car" / "already did the kit, what's next" — a follow-up in the SAME conversation
+  ├─▶ reuses the session's cached location + conditions + alerts (no re-fetching)
+  └─▶ reasonAboutPrep()      same reasoning step, told what was already given and the follow-up
+
+remember_preference(session_id, preference)
+  │  "elderly resident" — stored once, applied automatically by every later call in that session
 ```
 
 **Known limitation, stated honestly**: severe weather *alerts* are US-only (NWS doesn't cover
 other countries — there's no equivalent free, no-key global alerting API). Outside the US, the
 tool still runs and reasons from region + current conditions, but flags `alertsCoverage:
 "unsupported"` rather than silently pretending there's no risk.
+
+**Session memory** (`src/lib/session.ts`) is what turns this from a single-turn Q&A bot into a
+multi-turn agentic workflow: pass any stable `session_id` (a per-conversation or per-customer id
+that Alexa+ would supply) to `get_weather_prep_guidance`, and it's kept alive for
+`remember_preference` and `refine_prep_guidance` to build on — standing household details (no
+car, elderly or disabled residents, pets, mobility needs) persist across turns without being
+restated, and a follow-up like "we already did the kit, what else?" reuses the cached
+location/conditions/alerts instead of re-fetching, and builds on guidance already given instead
+of repeating it verbatim. It's an in-memory, per-process `Map` — deliberately simple for a
+hackathon build; a real deployment would back it with a shared store (Redis/DynamoDB) so it
+survives restarts and works across multiple server instances.
 
 ## Setup
 
@@ -67,6 +89,7 @@ access (use the full inference profile ARN if your model requires one).
 npm run smoke:alerts -- "Tucson, AZ"          # geocode + conditions + alerts only, no Bedrock needed
 npm run smoke -- "Tucson, AZ"                 # full pipeline, needs Bedrock
 npm run demo:alert-impact -- "Tucson, AZ"     # alert-aware vs. alert-blind side-by-side, needs Bedrock
+npm run smoke:session -- "Tampa, FL"          # remember_preference → get → refine, needs Bedrock
 ```
 
 Tip: to find a location with a currently active alert for a compelling demo, check
@@ -106,16 +129,24 @@ npm run http   # Streamable HTTP transport at http://localhost:8788/mcp — leav
 npm run inspect
 ```
 
-Shows `get_weather_prep_guidance` with its real schema. Fill in `location` (try a place with an
-active alert — see the tip above), run it, watch the live structured result come back.
+Shows all three tools with their real schemas. Fill in `get_weather_prep_guidance`'s `location`
+(try a place with an active alert — see the tip above) and a `session_id` (any string), run it,
+then call `refine_prep_guidance` with the same `session_id` and some `feedback` — watch the
+second result reuse the cached location/conditions/alerts and build on the first guidance instead
+of repeating it.
 
 ### 2. Web UI — simulated Alexa+ device experience
 
 With `npm run http` running, open **http://localhost:8788/demo/** (Chrome for mic input + spoken
 responses). Same Echo-style orb interface as forecast-fork, restyled for the alert domain — a
 severity badge (none/minor/moderate/severe/extreme) and a numbered prep-steps card instead of dish
-chips. Calls `POST /api/prep`, which runs the exact same `getPrepGuidance()` function the MCP tool
-uses — real geocoding, real conditions, real NWS alerts, real Bedrock reasoning.
+chips. A `session_id` is generated once per page load; a "remember a household detail" field
+feeds `remember_preference`, and every guidance card carries quick-feedback chips ("We have no
+car", "Already did the kit — what next?") plus a free-text field that call `refine_prep_guidance`
+— the multi-turn, context-carrying flow, live in the browser. Calls `POST /api/prep`,
+`/api/refine`, and `/api/remember`, which run the exact same `getPrepGuidance()` /
+`refinePrepGuidance()` / `rememberPreference()` functions the MCP tools use — real geocoding,
+real conditions, real NWS alerts, real Bedrock reasoning.
 
 ### 3. alexa-skill-mcp-bridge — real orchestrator, real voice-assistant conversation
 
@@ -156,6 +187,9 @@ output than a dining recommendation.
   international coverage, not attempted here given no single free global source exists.
 - **Bedrock model ID** — defaults to `anthropic.claude-sonnet-4-6-v1:0` in `.env.example`; swap for
   whatever model/inference-profile you have enabled in your AWS account/region.
+- **Durable session storage** — `remember_preference`/`refine_prep_guidance` state lives in an
+  in-memory `Map` per server process (see `src/lib/session.ts`); fine for a single-process demo,
+  but a real deployment needs a shared store so it survives restarts and multiple instances.
 
 ## Project structure
 
@@ -163,17 +197,22 @@ output than a dining recommendation.
 src/
   server.ts                     shared McpServer instance + tool registration
   index.ts                      stdio entry point (Claude Desktop, MCP Inspector)
-  http.ts                       Streamable HTTP entry point + /demo static UI + /api/prep
-  tools/getPrepGuidance.ts      orchestrates geocode → conditions + alerts → reasoning
+  http.ts                       Streamable HTTP entry point + /demo static UI + /api/* routes
+  tools/getPrepGuidance.ts      orchestrates geocode → conditions + alerts → reasoning (+ session memory)
+  tools/refinePrepGuidance.ts   follow-up turn: reuses cached location/conditions/alerts, avoids repeats
+  tools/rememberPreference.ts   stores a standing household detail on a session
   lib/geocode.ts                Google Geocoding API client
   lib/weather.ts                Open-Meteo current-conditions client
   lib/alerts.ts                 US National Weather Service active-alerts client
   lib/bedrock.ts                Bedrock Claude call + reasoning prompt (structured tool-use)
+  lib/session.ts                in-memory per-session household details + last-guidance cache
 demo/
-  index.html                    simulated Alexa+ device UI (orb, voice in/out, chat transcript)
+  index.html                    simulated Alexa+ device UI (orb, voice in/out, chat transcript,
+                                 household-detail chips, inline refine-this-guidance controls)
 scripts/
   smoke-test.ts                 full pipeline test (needs Bedrock)
   smoke-test-alerts.ts          geocode + conditions + alerts only, no Bedrock needed
+  smoke-test-session.ts         remember_preference → get → refine, needs Bedrock
   demo-alert-impact.ts          alert-aware vs. alert-blind side-by-side (needs Bedrock)
   load-test.ts                  real latency/success/token-usage measurement across US regions
 ```
