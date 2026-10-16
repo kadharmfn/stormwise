@@ -4,34 +4,70 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>stormwise — Alexa+ simulated demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b0d12;
-    --bg-panel: #161116;
-    --text: #f3eee9;
-    --text-dim: #a89d94;
-    --accent: #ff9d3d;
-    --accent-2: #ff5d5d;
-    --accent-calm: #4dc9ff;
-    --border: #2a2226;
+    --bg: #eef1f4;
+    --bg-panel: #ffffff;
+    --text: #1b2430;
+    --text-dim: #5b6676;
+    --accent: #c2540a;
+    --accent-2: #c81e1e;
+    --accent-calm: #3d6b8c;
+    --border: #d7dce2;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   body { display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 32px 16px 48px; }
 
-  .brand { display: flex; align-items: center; gap: 10px; color: var(--text-dim); font-size: 13px; margin-bottom: 28px; }
-  .brand b { color: var(--text); font-weight: 600; }
-  .brand .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .site-header {
+    width: 100%;
+    max-width: 680px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 36px;
+    box-shadow: 0 1px 3px rgba(27, 36, 48, 0.07);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-row { display: flex; align-items: center; gap: 16px; }
+  .logo-badge {
+    width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0;
+    background: radial-gradient(circle at 35% 30%, var(--accent), var(--accent-2) 70%);
+    box-shadow: 0 6px 18px rgba(200, 30, 30, 0.25);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-text { text-align: left; }
+  .header-title {
+    margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: 30px; letter-spacing: -0.01em; color: var(--text); line-height: 1.1;
+  }
+  .header-sub { margin: 6px 0 0; font-size: 13.5px; color: var(--text-dim); }
+  .header-badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .badge-pill {
+    border-radius: 999px; padding: 5px 14px; font-size: 11.5px; font-weight: 500;
+    letter-spacing: 0.02em; border: 1px solid transparent;
+  }
+  .badge-calm { background: rgba(61,107,140,0.1); color: var(--accent-calm); border-color: rgba(61,107,140,0.3); }
+  .badge-amber { background: rgba(194,84,10,0.1); color: var(--accent); border-color: rgba(194,84,10,0.35); }
+  .badge-red { background: rgba(200,30,30,0.08); color: var(--accent-2); border-color: rgba(200,30,30,0.3); }
 
   .orb-wrap { position: relative; width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-  .orb { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--accent-calm), #2b6fa8 70%); box-shadow: 0 0 40px 6px rgba(77, 201, 255, 0.3); transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease; }
-  .orb-wrap .ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(255, 157, 61, 0.3); opacity: 0; }
+  .orb { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #7ba3c2, var(--accent-calm) 75%); box-shadow: 0 10px 28px rgba(61, 107, 140, 0.32); transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease; }
+  .orb-wrap .ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(61, 107, 140, 0.4); opacity: 0; }
 
   body[data-state="idle"] .orb { animation: breathe 3.2s ease-in-out infinite; }
-  body[data-state="listening"] .orb { animation: breathe 1s ease-in-out infinite; box-shadow: 0 0 60px 14px rgba(77, 201, 255, 0.5); }
+  body[data-state="listening"] .orb { animation: breathe 1s ease-in-out infinite; box-shadow: 0 10px 32px rgba(61, 107, 140, 0.45); }
   body[data-state="listening"] .ring { animation: ripple 1.4s ease-out infinite; opacity: 1; }
   body[data-state="thinking"] .orb { animation: spin 1.6s linear infinite, breathe 0.8s ease-in-out infinite; background: conic-gradient(from 0deg, var(--accent-calm), var(--accent), var(--accent-2), var(--accent-calm)); }
-  body[data-state="speaking"] .orb { animation: breathe 0.6s ease-in-out infinite; background: radial-gradient(circle at 35% 30%, var(--accent), var(--accent-2) 70%); box-shadow: 0 0 60px 14px rgba(255, 93, 93, 0.4); }
+  body[data-state="speaking"] .orb { animation: breathe 0.6s ease-in-out infinite; background: radial-gradient(circle at 35% 30%, var(--accent), var(--accent-2) 70%); box-shadow: 0 10px 32px rgba(200, 30, 30, 0.35); }
+  body[data-state="speaking"] .orb-wrap { cursor: pointer; }
 
   @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -44,8 +80,8 @@
   .input-row input::placeholder { color: var(--text-dim); }
   .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
   .mic-btn { background: var(--border); color: var(--text); }
-  .mic-btn.active { background: var(--accent-calm); color: #04121a; }
-  .send-btn { background: var(--accent); color: #200; }
+  .mic-btn.active { background: var(--accent-calm); color: #ffffff; }
+  .send-btn { background: var(--accent); color: #ffffff; }
   .icon-btn:hover { filter: brightness(1.1); }
   .icon-btn svg { width: 18px; height: 18px; }
 
@@ -58,41 +94,62 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .turn.user { align-items: flex-end; }
   .bubble { max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 14.5px; line-height: 1.5; }
-  .turn.user .bubble { background: var(--accent-calm); color: #04121a; border-bottom-right-radius: 4px; }
+  .turn.user .bubble { background: var(--accent-calm); color: #ffffff; border-bottom-right-radius: 4px; }
   .turn.assistant .bubble { background: var(--bg-panel); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 
-  .card { max-width: 85%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 13px; color: var(--text-dim); }
+  .card { max-width: 85%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 13px; color: var(--text-dim); box-shadow: 0 1px 3px rgba(27, 36, 48, 0.06); }
   .card .meta { color: var(--accent-calm); font-weight: 600; margin-bottom: 8px; font-size: 12.5px; }
   .severity-badge { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
-  .sev-none { background: rgba(148,163,184,0.15); color: #94a3b8; }
-  .sev-minor { background: rgba(250,204,21,0.15); color: #facc15; }
-  .sev-moderate { background: rgba(251,146,60,0.18); color: #fb923c; }
-  .sev-severe { background: rgba(248,113,113,0.18); color: #f87171; }
-  .sev-extreme { background: rgba(239,68,68,0.25); color: #ef4444; }
+  .sev-none { background: rgba(22,163,74,0.12); color: #15803d; }
+  .sev-minor { background: rgba(217,119,6,0.12); color: #92400e; }
+  .sev-moderate { background: rgba(234,88,12,0.14); color: #9a3412; }
+  .sev-severe { background: rgba(220,38,38,0.14); color: #b91c1c; }
+  .sev-extreme { background: rgba(185,28,28,0.18); color: #7f1d1d; }
   .steps { margin: 0; padding-left: 18px; }
   .steps li { margin-bottom: 4px; color: var(--text); }
   .coverage-note { margin-top: 10px; font-size: 11.5px; font-style: italic; opacity: 0.8; }
 
-  .error-bubble { border-color: #f87171 !important; color: #f87171; }
+  .error-bubble { border-color: #b91c1c !important; color: #b91c1c; }
 
   .prefs-row.input-row { max-width: 420px; margin-top: 14px; padding: 6px 6px 6px 16px; }
   .prefs-row input { font-size: 13px; }
   .prefs-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 560px; margin-top: 10px; }
-  .pref-chip { background: rgba(77, 201, 255, 0.15); color: var(--accent-calm); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+  .pref-chip { background: rgba(61, 107, 140, 0.1); color: var(--accent-calm); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
 
   .refine-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
   .refine-chip { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
   .refine-chip:hover { color: var(--text); border-color: var(--accent); }
   .refine-input-row { display: flex; gap: 6px; margin-top: 8px; }
   .refine-input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; color: var(--text); font-size: 12.5px; outline: none; }
-  .refine-input-row button { background: var(--accent); color: #200; border: none; border-radius: 999px; padding: 6px 14px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+  .refine-input-row button { background: var(--accent); color: #ffffff; border: none; border-radius: 999px; padding: 6px 14px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
 
   footer { margin-top: 40px; color: var(--text-dim); font-size: 11.5px; text-align: center; opacity: 0.7; }
 </style>
 </head>
 <body data-state="idle">
 
-  <div class="brand"><span class="dot"></span> stormwise — <b>simulated Alexa+ experience</b></div>
+  <header class="site-header">
+    <div class="logo-row">
+      <div class="logo-badge">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="14" cy="17" rx="7" ry="6" fill="#ffffff" fill-opacity="0.95"/>
+          <ellipse cx="22" cy="13" rx="8" ry="7" fill="#ffffff" fill-opacity="0.95"/>
+          <ellipse cx="29" cy="18" rx="6" ry="5.5" fill="#ffffff" fill-opacity="0.95"/>
+          <rect x="9" y="17" width="23" height="10" rx="5" fill="#ffffff" fill-opacity="0.95"/>
+          <polygon points="21,21 16,30 20,30 17,37 26,26 21,26" fill="#c2540a"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1 class="header-title">stormwise</h1>
+        <p class="header-sub">Live-alert-aware weather prep, reasoned by Claude — simulated Alexa+ experience</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge-pill badge-calm">MCP</span>
+      <span class="badge-pill badge-amber">Alexa+</span>
+      <span class="badge-pill badge-red">Amazon Bedrock</span>
+    </div>
+  </header>
 
   <div class="orb-wrap">
     <div class="ring"></div>
@@ -111,6 +168,7 @@
   </div>
 
   <div class="examples">
+    <div class="example-chip" data-q="How should I prepare right now in Indiana, PA?">Indiana, PA (live alert)</div>
     <div class="example-chip" data-q="How should I prepare right now in Tampa, FL?">Tampa, FL</div>
     <div class="example-chip" data-q="How should I prepare right now in Minneapolis, MN?">Minneapolis, MN</div>
     <div class="example-chip" data-q="How should I prepare right now in Oklahoma City, OK?">Oklahoma City, OK</div>
@@ -179,6 +237,7 @@
 
   async function ask(query) {
     if (!query || !query.trim()) return;
+    window.speechSynthesis.cancel();
     textInput.value = '';
     addTurn('user', bubble(query));
 
@@ -204,7 +263,7 @@
       }
 
       hasActiveGuidance = true;
-      setState('speaking', 'Speaking…');
+      setState('speaking', 'Speaking… (tap orb to stop)');
       addTurn('assistant', bubble(data.reasoning));
       addTurn('assistant', renderCard(data));
       speak(data.reasoning, () => setState('idle', 'Ask how to prepare, anywhere in the US'));
@@ -217,6 +276,7 @@
 
   async function refine(feedback) {
     if (!feedback || !feedback.trim() || !hasActiveGuidance) return;
+    window.speechSynthesis.cancel();
     addTurn('user', bubble(feedback));
 
     setState('thinking', 'Thinking…');
@@ -238,7 +298,7 @@
         return;
       }
 
-      setState('speaking', 'Speaking…');
+      setState('speaking', 'Speaking… (tap orb to stop)');
       addTurn('assistant', bubble(data.reasoning));
       addTurn('assistant', renderCard(data));
       speak(data.reasoning, () => setState('idle', 'Ask how to prepare, anywhere in the US'));
@@ -342,15 +402,51 @@
   prefBtn.addEventListener('click', () => { const v = prefInput.value; prefInput.value = ''; rememberPreference(v); });
   prefInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = prefInput.value; prefInput.value = ''; rememberPreference(v); } });
 
+  // Prefer a higher-quality network voice (e.g. Chrome's "Google US English") over the default
+  // offline system voice, which tends to sound noticeably more robotic.
+  let preferredVoice = null;
+  function choosePreferredVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+    const priorities = [
+      (v) => /Google US English/i.test(v.name),
+      (v) => /Natural/i.test(v.name),
+      (v) => /Samantha/i.test(v.name),
+      (v) => /Ava|Allison|Serena/i.test(v.name),
+      (v) => v.lang === 'en-US',
+      (v) => v.lang && v.lang.startsWith('en'),
+    ];
+    for (const test of priorities) {
+      const match = voices.find(test);
+      if (match) { preferredVoice = match; return; }
+    }
+    preferredVoice = voices[0];
+  }
+  if ('speechSynthesis' in window) {
+    choosePreferredVoice();
+    window.speechSynthesis.onvoiceschanged = choosePreferredVoice;
+  }
+
   function speak(text, onDone) {
     if (!('speechSynthesis' in window)) { onDone && onDone(); return; }
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 1.02;
+    if (preferredVoice) utter.voice = preferredVoice;
+    utter.rate = 0.97;
+    utter.pitch = 1;
     utter.onend = () => onDone && onDone();
     utter.onerror = () => onDone && onDone();
-    window.speechSynthesis.speak(utter);
+    // Calling speak() in the same tick as cancel() can silently drop the utterance in Chrome;
+    // a short delay avoids that race.
+    setTimeout(() => window.speechSynthesis.speak(utter), 30);
   }
+
+  document.querySelector('.orb-wrap').addEventListener('click', () => {
+    if (body.getAttribute('data-state') === 'speaking') {
+      window.speechSynthesis.cancel();
+      setState('idle', 'Ask how to prepare, anywhere in the US');
+    }
+  });
 
   sendBtn.addEventListener('click', () => ask(textInput.value));
   textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(textInput.value); });
@@ -367,6 +463,7 @@
 
     micBtn.addEventListener('click', () => {
       if (listening) { recognition.stop(); return; }
+      window.speechSynthesis.cancel();
       listening = true;
       micBtn.classList.add('active');
       setState('listening', 'Listening…');
